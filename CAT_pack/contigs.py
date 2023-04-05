@@ -18,11 +18,12 @@ def parse_arguments():
             add_help=False)
     
     required = parser.add_argument_group('Required arguments')
-    shared.add_argument(required, 'contigs_fasta', True)
     shared.add_argument(required, 'database_folder', True)
     shared.add_argument(required, 'taxonomy_folder', True)
 
     optional = parser.add_argument_group('Optional arguments')
+    shared.add_argument(optional, 'transdecoder', False)
+    shared.add_argument(optional, 'contigs_fasta', False)
     shared.add_argument(optional, 'r', False, default=decimal.Decimal(10))
     shared.add_argument(optional, 'f', False, default=decimal.Decimal(0.5))
     shared.add_argument(optional, 'out_prefix', False, default='./out.CAT')
@@ -228,21 +229,24 @@ def run():
             show_time=False)
     
     # Start CAT.
-    contig_names = shared.import_contig_names(
-            args.contigs_fasta, args.log_file, args.quiet)
-    
-    if 'predict_proteins' in step_list:
-        shared.run_prodigal(
-                args.path_to_prodigal,
-                args.contigs_fasta,
-                args.proteins_fasta,
-                args.proteins_gff,
-                args.log_file,
-                args.quiet)
+    if not args.transdecoder:
+        contig_names = shared.import_contig_names(
+                args.contigs_fasta, args.log_file, args.quiet)
         
-    contig2ORFs = shared.import_ORFs(
-            args.proteins_fasta, args.log_file, args.quiet)
-    
+        if 'predict_proteins' in step_list:
+                shared.run_prodigal(
+                        args.path_to_prodigal,
+                        args.contigs_fasta,
+                        args.proteins_fasta,
+                        args.proteins_gff,
+                        args.log_file,
+                        args.quiet)
+                
+        contig2ORFs = shared.import_ORFs(
+                args.proteins_fasta, args.log_file, args.quiet)
+    else:
+        contig2ORFs,contig_names, args.proteins_fasta = shared.import_transdecoder(args.transdecoder, args.log_file, args.quiet)
+
     check.check_whether_ORFs_are_based_on_contigs(
             contig_names, contig2ORFs, args.log_file, args.quiet)
     

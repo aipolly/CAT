@@ -60,6 +60,19 @@ def add_argument(argument_group, dest, required, default=None, help_=None):
             action=PathAction,
             help=help_,
         )
+    elif dest == 'transdecoder' :
+        if help_ is None:
+            help_ = "Path to transdecoder directory."
+        argument_group.add_argument(
+            "-tr",
+            "--transdecoder",
+            dest="transdecoder",
+            metavar="",
+            required=required,
+            type=str,
+            action=PathAction,
+            help=help_,
+        )
     elif dest == "db_fasta":
         if help_ is None:
             help_ = "Path to fasta file containing all sequences."
@@ -990,6 +1003,44 @@ def import_ORFs(proteins_fasta, log_file, quiet):
 
     return contig2ORFs
 
+def import_transdecoder(trans_dir, log_file, quiet):
+    message = "Parsing Transdecoder  ORF file {0}".format(trans_dir)
+    give_user_feedback(message, log_file, quiet)
+
+    contig2ORFs = {}
+    tdir = pathlib.Path(trans_dir)
+    tdir_pep = tdir.joinpath('longest_orfs.pep').absolute()
+    tdir_gff = tdir.joinpath('longest_orfs.gff3').absolute()
+
+    if not (tdir_pep.exists() and tdir_gff.exists()):
+        pass
+    with tdir_gff.open('r') as f1:
+        for line in f1:
+            line = line.strip().split('\t')
+            try:
+                gtype = line[2]
+                gstr = line[8]
+            except:
+                continue
+            if gtype!= 'gene' : continue
+            for gst in gstr.strip(';').split(';'):
+                if gst.startswith('ID=') and '~~' in gst:
+                    contig,ORF = gst.replace('ID=','').split('~~')[:2]
+                    if contig not in contig2ORFs:
+                        contig2ORFs[contig] = []
+                    contig2ORFs[contig].append(ORF)
+    
+    ctg_names = set(contig2ORFs.keys())
+    if not quiet:
+        message=''
+        for i,kv in enumerate( contig2ORFs.items()):
+            if i > 3:
+                give_user_feedback(message, log_file, quiet)
+                break
+            else:
+                message+='contig%s %s<- %s\n\t\t' %(i, kv[0], ','.join(kv[1]))
+
+    return contig2ORFs, ctg_names, tdir_pep.as_posix()
 
 def parse_tabular_alignment(alignment_file, one_minus_r, log_file, quiet):
     message = "Parsing alignment file {0}.".format(alignment_file)
